@@ -6,6 +6,33 @@ let activeTab = "commits";
 // so switching tabs (or reselecting a repo) doesn't refetch from GitHub
 const tabCache = {};
 
+// GitHub's own per-language colors, used for the small swatch on repo cards
+const LANG_COLORS = {
+  JavaScript: "#f1e05a",
+  TypeScript: "#3178c6",
+  Python: "#3572a5",
+  Go: "#00add8",
+  Rust: "#dea584",
+  Java: "#b07219",
+  Kotlin: "#a97bff",
+  Swift: "#f05138",
+  C: "#555555",
+  "C++": "#f34b7d",
+  "C#": "#178600",
+  Ruby: "#701516",
+  PHP: "#4f5d95",
+  HTML: "#e34c26",
+  CSS: "#563d7c",
+  Shell: "#89e051",
+  Vue: "#41b883",
+  Dart: "#00b4ab",
+  "Jupyter Notebook": "#da5b0b",
+};
+
+function langColor(lang) {
+  return LANG_COLORS[lang] || "#6b7280";
+}
+
 // ---------- small helpers ----------
 
 function escapeHtml(value) {
@@ -69,6 +96,19 @@ function clearFeedback() {
   box.textContent = "";
 }
 
+// sets a dd's text and hides its row entirely when there's no value
+function setMetaRow(rowId, ddId, value) {
+  const row = el(rowId);
+  const dd = el(ddId);
+  if (!value) {
+    row.hidden = true;
+    dd.textContent = "";
+    return;
+  }
+  row.hidden = false;
+  dd.textContent = value;
+}
+
 // ---------- search flow ----------
 
 window.addEventListener("DOMContentLoaded", async () => {
@@ -89,7 +129,7 @@ async function handleSearch(event) {
   if (!username) return;
 
   const searchBtn = el("search-btn");
-  const pulse = el("pulse-line");
+  const graph = el("pulse-line");
 
   clearFeedback();
   setHidden("profile-section", true);
@@ -98,8 +138,8 @@ async function handleSearch(event) {
   setHidden("empty-state", true);
 
   searchBtn.disabled = true;
-  pulse.classList.add("active");
-  showFeedback(`Looking up @${escapeHtml(username)}…`, "loading");
+  graph.classList.add("active");
+  showFeedback(`resolving @${escapeHtml(username)}…`, "loading");
 
   try {
     const user = await getUser(username);
@@ -115,7 +155,7 @@ async function handleSearch(event) {
       // profile loaded fine, but repos failed independently (e.g. rate limit)
       reposFailed = true;
       showFeedback(
-        `Loaded @${escapeHtml(username)}, but repositories failed to load: ${repoError.message}`,
+        `loaded @${escapeHtml(username)}, but repositories failed to load: ${repoError.message}`,
         "error",
       );
     }
@@ -125,11 +165,11 @@ async function handleSearch(event) {
 
     if (!reposFailed) clearFeedback();
   } catch (error) {
-    showFeedback(error.message || "Something went wrong.", "error");
+    showFeedback(error.message || "something went wrong.", "error");
     setHidden("empty-state", false);
   } finally {
     searchBtn.disabled = false;
-    pulse.classList.remove("active");
+    graph.classList.remove("active");
   }
 }
 
@@ -138,7 +178,7 @@ async function handleSearch(event) {
 function renderProfile(user) {
   el("profile-avatar").src = user.avatar_url || "";
   el("profile-avatar").alt = user.login ? `${user.login}'s avatar` : "";
-  el("profile-name").textContent = user.name || user.login || "Unknown user";
+  el("profile-name").textContent = user.name || user.login || "unknown user";
 
   const login = el("profile-login");
   login.textContent = user.login ? `@${user.login}` : "";
@@ -146,15 +186,13 @@ function renderProfile(user) {
 
   el("profile-bio").textContent = user.bio || "";
 
-  el("profile-location").innerHTML = user.location
-    ? `<i class="fa-solid fa-location-dot"></i> ${escapeHtml(user.location)}`
-    : "";
-  el("profile-company").innerHTML = user.company
-    ? `<i class="fa-solid fa-building"></i> ${escapeHtml(user.company)}`
-    : "";
-  el("profile-joined").innerHTML = user.created_at
-    ? `<i class="fa-regular fa-calendar"></i> Joined ${formatDate(user.created_at)}`
-    : "";
+  setMetaRow("meta-location", "profile-location", user.location);
+  setMetaRow("meta-company", "profile-company", user.company);
+  setMetaRow(
+    "meta-joined",
+    "profile-joined",
+    user.created_at ? formatDate(user.created_at) : "",
+  );
 
   el("stat-repos").textContent = formatCompactNumber(user.public_repos || 0);
   el("stat-followers").textContent = formatCompactNumber(user.followers || 0);
@@ -171,7 +209,7 @@ function renderRepoGrid(repos) {
   count.textContent = `${repos.length} repo${repos.length === 1 ? "" : "s"}`;
 
   if (repos.length === 0) {
-    grid.innerHTML = `<div class="panel-empty">No public repositories found.</div>`;
+    grid.innerHTML = `<div class="panel-empty">no public repositories found.</div>`;
     return;
   }
 
@@ -188,13 +226,13 @@ function renderRepoGrid(repos) {
     card.innerHTML = `
       <div class="repo-card-top">
         <span class="repo-name">${escapeHtml(repo.name)}</span>
-        ${repo.fork ? '<span class="repo-fork-badge"><i class="fa-solid fa-code-fork"></i> fork</span>' : ""}
+        ${repo.fork ? '<span class="repo-fork-badge">fork</span>' : ""}
       </div>
-      <p class="repo-desc">${escapeHtml(repo.description || "No description provided.")}</p>
+      <p class="repo-desc">${escapeHtml(repo.description || "no description provided.")}</p>
       <div class="repo-stats">
-        ${repo.language ? `<span><span class="lang-dot"></span> ${escapeHtml(repo.language)}</span>` : ""}
-        <span><i class="fa-solid fa-star"></i> ${formatCompactNumber(repo.stargazers_count || 0)}</span>
-        <span><i class="fa-solid fa-code-fork"></i> ${formatCompactNumber(repo.forks_count || 0)}</span>
+        ${repo.language ? `<span><span class="lang-dot" style="background:${langColor(repo.language)}"></span> ${escapeHtml(repo.language)}</span>` : ""}
+        <span>${formatCompactNumber(repo.stargazers_count || 0)} stars</span>
+        <span>${formatCompactNumber(repo.forks_count || 0)} forks</span>
         <span>updated ${timeAgo(repo.updated_at)}</span>
       </div>
     `;
@@ -255,7 +293,7 @@ async function loadTabData(tabName) {
     return;
   }
 
-  panel.innerHTML = `<div class="panel-loading">Fetching ${tabName}…</div>`;
+  panel.innerHTML = `<div class="panel-loading">fetching ${tabName}…</div>`;
 
   try {
     let data;
@@ -282,7 +320,7 @@ async function loadTabData(tabName) {
     renderTabPanel(tabName, data);
   } catch (error) {
     if (repoName !== currentRepoName) return;
-    panel.innerHTML = `<div class="panel-error">Couldn't load ${tabName}: ${escapeHtml(error.message)}</div>`;
+    panel.innerHTML = `<div class="panel-error">couldn't load ${tabName}: ${escapeHtml(error.message)}</div>`;
   }
 }
 
@@ -290,7 +328,7 @@ function renderTabPanel(tabName, data) {
   const panel = el(`panel-${tabName}`);
 
   if (!Array.isArray(data) || data.length === 0) {
-    panel.innerHTML = `<div class="panel-empty">No ${tabName} found for this repository.</div>`;
+    panel.innerHTML = `<div class="panel-empty">no ${tabName} found for this repository.</div>`;
     return;
   }
 
@@ -320,7 +358,7 @@ function renderCommits(panel, commits) {
       const sha = (c.sha || "").slice(0, 7);
       return `
         <a class="data-row" href="${c.html_url || "#"}" target="_blank">
-          <span class="sha-badge">${escapeHtml(sha)}</span>
+          <span class="commit-sha">${escapeHtml(sha)}</span>
           <div class="data-row-main">
             <div class="commit-message">${escapeHtml(message)}</div>
             <div class="commit-meta">${escapeHtml(author)} · ${timeAgo(date)}</div>
@@ -338,9 +376,10 @@ function renderIssues(panel, issues) {
     .slice(0, 30)
     .map((issue) => {
       const isPr = Boolean(issue.pull_request);
+      const state = issue.state === "open" ? "open" : "closed";
       return `
         <a class="data-row" href="${issue.html_url || "#"}" target="_blank">
-          <span class="issue-state ${issue.state === "open" ? "open" : "closed"}">${escapeHtml(issue.state || "unknown")}</span>
+          <span class="issue-state ${state}">[${escapeHtml(state)}]</span>
           <div class="data-row-main">
             <div class="issue-title">${isPr ? "PR: " : ""}${escapeHtml(issue.title)}</div>
             <div class="row-meta">#${issue.number} opened by ${escapeHtml(issue.user?.login || "unknown")} · ${timeAgo(issue.created_at)}</div>
@@ -379,7 +418,6 @@ function renderBranches(panel, branches) {
         <div class="data-row">
           <div class="data-row-main">
             <div class="branch-name">
-              <i class="fa-solid fa-code-branch"></i>
               ${escapeHtml(b.name)}
               ${b.protected ? '<span class="default-badge">protected</span>' : ""}
             </div>
