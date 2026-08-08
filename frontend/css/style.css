@@ -494,6 +494,8 @@ main {
   border-left: 1px solid var(--line);
 }
 
+/* ============ RECENT ACTIVITY ============ */
+
 .stat {
   display: flex;
   flex-direction: column;
