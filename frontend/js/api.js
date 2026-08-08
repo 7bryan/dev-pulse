@@ -48,6 +48,10 @@ function getUserRepos(username) {
   return apiRequest(`/github/${encodeURIComponent(username)}/repos`);
 }
 
+function getUserActivity(username) {
+  return apiRequest(`/github/${encodeURIComponent(username)}/activity`);
+}
+
 function getRepo(username, repo) {
   return apiRequest(
     `/github/${encodeURIComponent(username)}/repos/${encodeURIComponent(repo)}`,
