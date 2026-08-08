@@ -133,6 +133,7 @@ async function handleSearch(event) {
 
   clearFeedback();
   setHidden("profile-section", true);
+  setHidden("activity-section", true);
   setHidden("repos-section", true);
   setHidden("detail-section", true);
   setHidden("empty-state", true);
@@ -146,6 +147,9 @@ async function handleSearch(event) {
     currentUsername = username;
     renderProfile(user);
     setHidden("profile-section", false);
+
+    setHidden("activity-section", false);
+    loadUserActivity(username);
 
     let repos = [];
     let reposFailed = false;
@@ -197,6 +201,92 @@ function renderProfile(user) {
   el("stat-repos").textContent = formatCompactNumber(user.public_repos || 0);
   el("stat-followers").textContent = formatCompactNumber(user.followers || 0);
   el("stat-following").textContent = formatCompactNumber(user.following || 0);
+}
+
+// ---------- recent activity rendering ----------
+
+// GitHub's events API returns raw event objects (PushEvent, IssuesEvent,
+// WatchEvent, etc). This turns one into a short human-readable verb phrase.
+function describeEvent(event) {
+  const payload = event.payload || {};
+  const action = payload.action;
+
+  switch (event.type) {
+    case "PushEvent": {
+      const count = payload.commits?.length ?? payload.size ?? 0;
+      return `pushed ${count} commit${count === 1 ? "" : "s"} to`;
+    }
+    case "CreateEvent":
+      return `created ${payload.ref_type || "a repository"}${payload.ref ? ` "${escapeHtml(payload.ref)}"` : ""} in`;
+    case "DeleteEvent":
+      return `deleted ${payload.ref_type || "a branch"} "${escapeHtml(payload.ref || "")}" in`;
+    case "IssuesEvent":
+      return `${action || "updated"} an issue in`;
+    case "IssueCommentEvent":
+      return "commented on an issue in";
+    case "PullRequestEvent":
+      return `${action || "updated"} a pull request in`;
+    case "PullRequestReviewEvent":
+      return "reviewed a pull request in";
+    case "WatchEvent":
+      return "starred";
+    case "ForkEvent":
+      return "forked";
+    case "ReleaseEvent":
+      return "published a release in";
+    case "PublicEvent":
+      return "made public";
+    default:
+      return `${event.type.replace("Event", "").toLowerCase() || "acted on"} in`;
+  }
+}
+
+async function loadUserActivity(username) {
+  const list = el("activity-list");
+  const count = el("activity-count");
+  list.innerHTML = `<div class="panel-loading">fetching activity…</div>`;
+  count.textContent = "";
+
+  try {
+    const events = (await getUserActivity(username)) || [];
+    // guard against a stale response landing after a new search started
+    if (username !== currentUsername) return;
+    renderActivity(events);
+  } catch (error) {
+    if (username !== currentUsername) return;
+    list.innerHTML = `<div class="panel-error">couldn't load activity: ${escapeHtml(error.message)}</div>`;
+  }
+}
+
+function renderActivity(events) {
+  const list = el("activity-list");
+  const count = el("activity-count");
+
+  const trimmed = events.slice(0, 10);
+  count.textContent = trimmed.length
+    ? `${trimmed.length} recent event${trimmed.length === 1 ? "" : "s"}`
+    : "";
+
+  if (trimmed.length === 0) {
+    list.innerHTML = `<div class="panel-empty">no recent public activity.</div>`;
+    return;
+  }
+
+  const rows = trimmed
+    .map((event) => {
+      const repoName = event.repo?.name || "unknown/repo";
+      return `
+        <a class="data-row" href="https://github.com/${repoName}" target="_blank">
+          <div class="data-row-main">
+            <div class="commit-message">${describeEvent(event)} ${escapeHtml(repoName)}</div>
+            <div class="row-meta">${timeAgo(event.created_at)}</div>
+          </div>
+        </a>
+      `;
+    })
+    .join("");
+
+  list.innerHTML = rows;
 }
 
 // ---------- repo grid rendering ----------
