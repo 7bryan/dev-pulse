@@ -8,6 +8,7 @@ from services import (
     GithubRateLimitError,
     GithubServerError,
     fetch_github_data,
+    fetch_user_activity,
     fetch_user_repo_branches,
     fetch_user_repo_commits,
     fetch_user_repo_contributors,
@@ -97,6 +98,20 @@ async def get_github_user(username: str):
         )
 
     # return the parsed dictionary. FastAPI convert it to JSON automatically
+    return data
+
+
+@app.get("/github/{username}/activity")
+async def get_user_github_activity(username: str):
+    # user-level recent public activity: pushes, issues, PRs, stars, forks etc
+    data = await fetch_user_activity(username)
+
+    if data is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Github user '{username}' not found",
+        )
+
     return data
 
 
