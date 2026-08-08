@@ -126,3 +126,11 @@ async def fetch_user_repo_branches(
     url = f"https://api.github.com/repos/{username}/{repo}/branches"
 
     return await request_github(url)
+
+
+# recent public activity for a user (pushes, issues, PRs, stars, forks, etc)
+# this is user-level, unlike everything above which is scoped to one repo
+async def fetch_user_activity(username: str) -> Optional[Dict[str, Any]]:
+    url = f"https://api.github.com/users/{username}/events/public"
+
+    return await request_github(url)
