@@ -496,6 +496,26 @@ main {
 
 /* ============ RECENT ACTIVITY ============ */
 
+.load-more-btn {
+  margin-top: 10px;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.load-more-btn:hover {
+  border-color: var(--add);
+  color: var(--add);
+}
+
 .stat {
   display: flex;
   flex-direction: column;

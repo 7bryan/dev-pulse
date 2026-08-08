@@ -1,7 +1,12 @@
-// ---------- state ----------
+// STATE
 let currentUsername = null;
 let currentRepoName = null;
 let activeTab = "commits";
+// full list of events fetched for the current user; activityVisibleCount
+// controls how many of them are actually rendered (see "show more")
+let allActivityEvents = [];
+let activityVisibleCount = 0;
+const ACTIVITY_PAGE_SIZE = 10;
 // cache of already-fetched tab data, keyed by repo name then tab name,
 // so switching tabs (or reselecting a repo) doesn't refetch from GitHub
 const tabCache = {};
@@ -114,6 +119,10 @@ function setMetaRow(rowId, ddId, value) {
 window.addEventListener("DOMContentLoaded", async () => {
   checkBackendHealth();
   el("search-form").addEventListener("submit", handleSearch);
+  el("activity-more-btn").addEventListener("click", () => {
+    activityVisibleCount += ACTIVITY_PAGE_SIZE;
+    renderActivity();
+  });
   document
     .querySelectorAll(".tab")
     .forEach((btn) =>
@@ -213,7 +222,8 @@ function describeEvent(event) {
 
   switch (event.type) {
     case "PushEvent": {
-      const count = payload.commits?.length ?? payload.size ?? 0;
+      const count =
+        payload.distinct_size ?? payload.size ?? payload.commits?.length ?? 0;
       return `pushed ${count} commit${count === 1 ? "" : "s"} to`;
     }
     case "CreateEvent":
@@ -246,33 +256,39 @@ async function loadUserActivity(username) {
   const count = el("activity-count");
   list.innerHTML = `<div class="panel-loading">fetching activity…</div>`;
   count.textContent = "";
+  el("activity-more-btn").hidden = true;
 
   try {
     const events = (await getUserActivity(username)) || [];
     // guard against a stale response landing after a new search started
     if (username !== currentUsername) return;
-    renderActivity(events);
+    allActivityEvents = events;
+    activityVisibleCount = ACTIVITY_PAGE_SIZE;
+    renderActivity();
   } catch (error) {
     if (username !== currentUsername) return;
     list.innerHTML = `<div class="panel-error">couldn't load activity: ${escapeHtml(error.message)}</div>`;
   }
 }
 
-function renderActivity(events) {
+function renderActivity() {
   const list = el("activity-list");
   const count = el("activity-count");
+  const moreBtn = el("activity-more-btn");
 
-  const trimmed = events.slice(0, 10);
-  count.textContent = trimmed.length
-    ? `${trimmed.length} recent event${trimmed.length === 1 ? "" : "s"}`
+  const visible = allActivityEvents.slice(0, activityVisibleCount);
+
+  count.textContent = allActivityEvents.length
+    ? `showing ${visible.length} of ${allActivityEvents.length}`
     : "";
 
-  if (trimmed.length === 0) {
+  if (visible.length === 0) {
     list.innerHTML = `<div class="panel-empty">no recent public activity.</div>`;
+    moreBtn.hidden = true;
     return;
   }
 
-  const rows = trimmed
+  const rows = visible
     .map((event) => {
       const repoName = event.repo?.name || "unknown/repo";
       return `
@@ -287,6 +303,7 @@ function renderActivity(events) {
     .join("");
 
   list.innerHTML = rows;
+  moreBtn.hidden = activityVisibleCount >= allActivityEvents.length;
 }
 
 // ---------- repo grid rendering ----------
