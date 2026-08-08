@@ -255,6 +255,15 @@ function selectRepo(repo) {
   el("detail-repo-link").href =
     repo.html_url || `https://github.com/${currentUsername}/${repo.name}`;
 
+  el("detail-repo-desc").textContent =
+    repo.description || "no description provided.";
+  el("detail-repo-stats").innerHTML = `
+    ${repo.language ? `<span><span class="lang-dot" style="background:${langColor(repo.language)}"></span> ${escapeHtml(repo.language)}</span>` : ""}
+    <span>${formatCompactNumber(repo.stargazers_count || 0)} stars</span>
+    <span>${formatCompactNumber(repo.forks_count || 0)} forks</span>
+    <span>updated ${timeAgo(repo.updated_at)}</span>
+  `;
+
   document.querySelectorAll(".tab").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.tab === "commits");
   });

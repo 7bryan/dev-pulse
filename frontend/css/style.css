@@ -607,15 +607,48 @@ main {
 
 .detail-section {
   margin-top: 44px;
+  scroll-margin-top: 24px;
+}
+
+.detail-summary {
+  margin-bottom: 22px;
+}
+
+.detail-desc {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+  max-width: 70ch;
+  margin-bottom: 10px;
 }
 
 .detail-header {
+  margin-bottom: 20px;
+}
+
+.detail-header-top {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
   flex-wrap: wrap;
   gap: 12px;
-  margin-bottom: 18px;
+  margin-bottom: 10px;
+}
+
+.detail-repo-desc {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  line-height: 1.55;
+  max-width: 64ch;
+  margin-bottom: 10px;
+}
+
+.detail-repo-desc:empty {
+  display: none;
+}
+
+.detail-repo-stats {
+  margin-bottom: 4px;
 }
 
 .detail-eyebrow {
