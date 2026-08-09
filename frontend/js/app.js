@@ -1,4 +1,4 @@
-// STATE
+// state
 let currentUsername = null;
 let currentRepoName = null;
 let activeTab = "commits";
@@ -38,7 +38,7 @@ function langColor(lang) {
   return LANG_COLORS[lang] || "#6b7280";
 }
 
-// ---------- small helpers ----------
+// small helpers
 
 function escapeHtml(value) {
   const div = document.createElement("div");
@@ -114,7 +114,7 @@ function setMetaRow(rowId, ddId, value) {
   dd.textContent = value;
 }
 
-// ---------- search flow ----------
+// search flow
 
 window.addEventListener("DOMContentLoaded", async () => {
   checkBackendHealth();
@@ -186,7 +186,7 @@ async function handleSearch(event) {
   }
 }
 
-// ---------- profile rendering ----------
+// profile rendering
 
 function renderProfile(user) {
   el("profile-avatar").src = user.avatar_url || "";
@@ -212,7 +212,7 @@ function renderProfile(user) {
   el("stat-following").textContent = formatCompactNumber(user.following || 0);
 }
 
-// ---------- recent activity rendering ----------
+// recent activity rendering
 
 // GitHub's events API returns raw event objects (PushEvent, IssuesEvent,
 // WatchEvent, etc). This turns one into a short human-readable verb phrase.
@@ -222,9 +222,15 @@ function describeEvent(event) {
 
   switch (event.type) {
     case "PushEvent": {
+      // GitHub's Oct 2025 Events API change stripped commit counts/summaries
+      // from push payloads entirely (github.blog/changelog, Aug 2025) —
+      // so size/distinct_size/commits are usually just absent now. Only
+      // claim a number when the API actually still provides one.
       const count =
-        payload.distinct_size ?? payload.size ?? payload.commits?.length ?? 0;
-      return `pushed ${count} commit${count === 1 ? "" : "s"} to`;
+        payload.size ?? payload.distinct_size ?? payload.commits?.length;
+      return count != null
+        ? `pushed ${count} commit${count === 1 ? "" : "s"} to`
+        : "pushed to";
     }
     case "CreateEvent":
       return `created ${payload.ref_type || "a repository"}${payload.ref ? ` "${escapeHtml(payload.ref)}"` : ""} in`;
@@ -306,7 +312,7 @@ function renderActivity() {
   moreBtn.hidden = activityVisibleCount >= allActivityEvents.length;
 }
 
-// ---------- repo grid rendering ----------
+// repo grid rendering
 
 function renderRepoGrid(repos) {
   const grid = el("repo-grid");
@@ -348,7 +354,7 @@ function renderRepoGrid(repos) {
   });
 }
 
-// ---------- repo detail / tabs ----------
+// repo detail / tabs
 
 function selectRepo(repo) {
   currentRepoName = repo.name;
